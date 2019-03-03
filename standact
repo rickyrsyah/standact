@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+# assumse, current state location inside android module
+module_name=`awk -v RS="\r\n" '/include/ {gsub("['\'':]", "", $2); print $2}' settings.gradle`
+parse_data=(`xml2 < "$module_name/src/main/AndroidManifest.xml" | awk -F '='  '
+  /\/manifest\/(@package=|(application\/activity\/)@android:name=)/ {print $2}'`)
+
+package_name=${parse_data[0]}
+activity=(${parse_data[@]:(1)})
+
+print_activity() {
+  echo "Activity: "
+  for i in ${!activity[@]}
+  do
+    printf "[%d]    %s\n" $i ${activity[$i]}
+  done
+}
+
+# -- MAIN --
+# looping when incorrect
+while ! [[ $idx -le $((${#activity[@]} -1)) && $idx =~ ^[0-9]+$ ]]
+do
+  print_activity
+  read -p "Please <enter> to start main activity[0], or type another number: " idx
+  if [ -z $idx ];then idx=0; fi
+done
+
+# echo "adb shell am start -n $package_name/${activity[$idx]}"
+adb shell am start -n $package_name/${activity[$idx]}
